@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>小惑星</title>
+<script src="perlin.js"></script>
+<script>
+var canvas, context;          //カンバス
+var rocket;                   //ロケット
+var asteroids = new Array();  //小惑星
+var bullets = new Array();    //弾
+var coolTime, score, timer;   //クールタイム、スコア、タイマー
+
+//ゲームオブジェクトクラス
+function GameObject(objectType, x, y, angle, speed) {  //GameObjectクラスを作成
+   this.objectType = objectType;        //タイプ（rocket/asteroid/bullet)
+   this.x = x;                          //座標
+   this.y = y;
+   this.angle = angle;                  //向き
+   this.speed = speed;                  //速さ
+   this.status = "alive";               //ステータス(alive/dead)
+   //大きさ（小惑星用）
+   this.size = Math.floor(Math.random()*20)+30;     //30～50の範囲の乱数
+}
+
+GameObject.prototype.update = function() {      //GameObjectクラスのupdate()メソッドを作成
+   //移動
+   this.x += Math.cos(this.angle) * this.speed; //向きと速さから求めた移動量を足す
+   this.y += Math.sin(this.angle) * this.speed;
+   if (this.objectType == "bullet") {           //弾（ミサイル）の場合
+      //弾が画面外処理（消滅）
+      if ((this.x < 0) || (this.x > canvas.width) ||
+         (this.y < 0) || (this.y > canvas.height)) this.status = "dead";
+   } else { //ロケット（自機）または小惑星の場合
+      //ロケット、小惑星の画面外処理（反対側へ）
+      if (this.x < 0) this.x = canvas.width;
+      if (this.x > canvas.width) this.x = 0;
+      if (this.y < 0) this.y = canvas.height;
+      if (this.y > canvas.height) this.y = 0;
+      //ロケットの原則
+      if (this.objectType == "rocket") {    //ロケット（自機）の場合
+         this.speed -= 0.02;
+         if (this.speed < 0) this.speed = 0;
+      }
+   }
+
+   //描画
+   context.save();                      //キャンバスを保存
+   context.translate(this.x, this.y);   //キャンバスを移動
+   context.rotate(this.angle);          //キャンバスを回転
+   context.strokeStyle = "#FFFFFF";     //線の色は白
+   context.beginPath();
+   if (this.objectType == "rocket") {
+       //ロケット
+       context.moveTo(10, 0);           //横向きの三角形を描く
+       context.lineTo(-10, -10);
+       context.lineTo(-10, 10);
+       if (this.speed > 2) context.strokeStyle = "#00FFFF";         //ロケットの速さが2より大きいなら線の色を水色に
+       if (this.status == "dead") context.strokeStyle = "#FF0000";  //ロケットのステータスが「dead」なら線の色を赤色に
+    } else if (this.objectType == "asteroid") {
+        //小惑星
+        context.moveTo(this.size, 0);
+        for (var i=1; i<10; i++) {
+            var x = (this.size+i) * Math.cos(2*Math.PI/10*i);       //少しいびつな10角形を描く
+            var y = (this.size+i) * Math.sin(2*Math.PI/10*i);
+            context.lineTo(x, y);
+        }
+    } else if (this.objectType == "bullet") {
+        //弾
+        context.moveTo(0, 0);           //長さ５の線を描く
+        context.lineTo(5, 0);
+    }
+    context.closePath();            //パスを閉じる
+    context.stroke();
+    context.restore();
+}
+
+function init() {
+    //キャンバスの取得
+    canvas = document.getElementById("game");       //キャンバスのID
+    context = canvas.getContext("2d");              //キャンバスの描画機能を有効にする
+}
+
+function main() {
+    //キャンバスのクリア
+    context.clearRect(0, 0, canvas.width, canvas.height);   //キャンバスの横幅、高さ
+
+    //小惑星との衝突
+    for (var i=0; i<asteroids.length; i++) {                //小惑星の数（5個)
+       //ロケットと衝突
+       if (checkCollision(asteroids[i], rocket)) rocket.status = "dead";    //小惑星とロケット（自機）が衝突していたら、ロケットのステータスを「dead」に
+       //弾と衝突
+       for (var j=0; j<bullets.length; j++) {
+           if (checkCollision(asteroids[i].bullets[j])) {}
+       }
+    
+    }
+}
+
+
