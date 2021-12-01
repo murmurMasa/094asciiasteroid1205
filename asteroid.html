@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>小惑星</title>
-<script src="perlin.js"></script>
+<!-- <script src="perlin.js"></script> -->
 <script>
 var canvas, context;          //カンバス
 var rocket;                   //ロケット
@@ -91,10 +91,97 @@ function main() {
        if (checkCollision(asteroids[i], rocket)) rocket.status = "dead";    //小惑星とロケット（自機）が衝突していたら、ロケットのステータスを「dead」に
        //弾と衝突
        for (var j=0; j<bullets.length; j++) {
-           if (checkCollision(asteroids[i].bullets[j])) {}
+           if (checkCollision(asteroids[i], bullets[j])) {
+               asteroids[i].status = "dead";                //小惑星と弾（ミサイル）が衝突していたら、双方のステータスを「dead」にし、100点足す
+               bullets[j].status = "dead";
+               score +=100;
+           }
+           //弾の消滅
+           if (bullets[j].status == "dead") {               //弾（ミサイル）のステータスが「dead」なら配列bullets[]から要素を削除する
+              bullets.splice(j, 1);
+              j--;
+           }
        }
-    
+       //小惑星復活
+       if (asteroids[i].status == "dead") {                 //小惑星のステータスが「dead」なら、小惑星を新規に作り直す
+          asteroids[i].x = Math.floor(Math.random()*800);
+          asteroids[i].y = 0;
+          asteroids[i].angle = Math.random() * 2 * Math.PI;
+          asteroids[i].status = "alive";
+       }
+    }
+    //ロケット、小惑星、弾、クールタイムの更新
+    rocket.update();
+    for (var i=0; i<asteroids.length; i++) asteroids[i].update();
+    for (var i=0; i<bullets.length; i++) bullets[i].update();
+    coolTime--;     //弾（ミサイル）が撃てるようになるまでの時間
+
+    //スコアの表示
+    document.getElementById("score").innerHTML = ("000000" +score).slice(-6);   //右から6文字を取り出す
+    //ゲームオーバー
+    if (rocket.status == "dead") {
+        document.getElementById("status").innerHTML = "GAME OVER!!";            //ステータス表示エリアのID
+        //ゲーム終了
+        document.getElementById("start").dsabled = false;
+        clearInterval(timer);                   //タイマーID
     }
 }
 
+function checkCollision(object1, object2) {
+    //衝突判定
+    var check = false;
+    if ((object1.status == "alive") && (object2.status == "alive")) {
+        var dx = object1.x - object2.x;
+        var dy = object1.y - object2.y;
+        var d = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));       //object1とobject2の（中心）座標の距離を求める
+        if (d < object1.size) check = true;                         //距離がbject1の大きさより小さかったら「衝突した」
+    }
+    return check;
+}
 
+function startGame() {
+    //初期化
+    score = 0;
+    rocket = new GameObject("rocket", 400, 300, 0, 0);  //「rocket」タイプのゲームオブジェクトを作成
+    bullets = [];
+    coolTime = 0;
+    //小惑星の生成
+    asteroids = [];
+    for (var i=0; i<5; i++) {
+        var x = Math.floor(Math.random() * 800);        //X座標は、0～800の乱数
+        var y = 0;
+        var angle = Math.random() * 2 * Math.PI;        //向き（角度）は、0～2πの乱数
+        asteroids.push(new GameObject("asteroid", x, y, angle, 1)); //「asteroid」タイプのゲームオブジェクトを作成し、配列asteroids[]に追加
+    }
+    //ゲームスタート
+    document.getElementById("status").innerText = "";
+    document.getElementById("start").disabled = true;
+    timer = setInterval(main, 20);                  //20秒ごとにmain()関数を実行
+}
+
+document.onkeydown = function(e) {                  //キー入力があったときに実行される関数
+   //回転（方向キー左右）、エンジン点火（方向キー上）
+   if ((e.key == "ArrowLeft") || (e.key == "Left")) rocket.angle -= 0.2;
+   if ((e.key == "ArrowRight") || (e.key == "Right")) rocket.angle += 0.2;
+   if ((e.key == "ArrowUp") || (e.key == "Up")) rocket.speed = 5;
+   //ミサイル発射（スペースキー）
+   if (((e.key == " ") || (e.key == "Spacebar")) && (coolTime <= 0)) {
+       coolTime = 10;
+       bullets.push(new GameObject("bullet", rocket.x, rocket.y, rocket.angle, 10)); //「bullet」タイプのゲームオブジェクトを作成し、配列bullet[]に追加
+   }
+}
+</script>
+<style>
+canvas {background-color: #000000;}
+#status {color: #FF0000;}
+</style>
+</head>
+<body onload="init()">
+<p>小惑星</p>
+<input type="button" id="start" value="ゲームスタート" onclick="startGame()">
+[←]左回転　[→]右回転　[↑]エンジン点火　[スペース]ミサイル発射
+<hr>
+スコア：<span id="score">000000</span> <span id="status"></span><br>
+<canvas id="game" width="800" height="600"></canvas>
+</body>
+</html>
